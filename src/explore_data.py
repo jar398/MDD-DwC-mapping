@@ -4,6 +4,15 @@ import csv, argparse, sys, re
 from util import find_index, del_list_indexes, generate_hash, generate_taxonID
 
 MDD_vers= [
+		# 'MDD_v1_6495species_JMamm.csv', 
+		# 'MDD_v1.1_6526species.csv', 
+		# 'MDD_v1.2_6485species.csv', 
+		# 'MDD_v1.3_6513species.csv', 
+		# 'MDD_v1.31_6513species.csv', 
+		# 'MDD_v1.4_6533species.csv', 
+		# 'MDD_v1.5_6554species.csv',
+		'MDD_v1.6_6557species.csv', 
+		'MDD_v1.7_6567species.csv',
 		'MDD_v1_6495species_JMamm_inDwC.csv', 
 		'MDD_v1.1_6526species_inDwC.csv', 
 		'MDD_v1.2_6485species_inDwC.csv', 
@@ -11,8 +20,8 @@ MDD_vers= [
 		'MDD_v1.31_6513species_inDwC.csv', 
 		'MDD_v1.4_6533species_inDwC.csv', 
 		'MDD_v1.5_6554species_inDwC.csv',
-		'MDD_v1.6_6557species_inDwC.csv', 
-		'MDD_v1.7_6567species_inDwC.csv',
+		# 'MDD_v1.6_6557species_inDwC.csv', 
+		# 'MDD_v1.7_6567species_inDwC.csv',
 ]
 
 MDD_DwC_mapping = {
@@ -321,15 +330,27 @@ def map_MDD_to_DwC(infile, outfile):
 				else:
 					nomenclatural_status = ''
 				
-
 				scientific_name = f'{row[genus_index]} {syn_epithet} {syn_authorship}'
 				canonical_name = f'{row[genus_index]} {syn_epithet}'
+
+				#Find if a synonym is junior or senior synonym
+				find_syn_year = re.match(r'.*([1-3][0-9]{3})', syn_authorship)
+				if find_syn_year is not None and row[year_index] is not None:
+					syn_year = find_syn_year.group(1)
+					if int(syn_year) < int(row[year_index]):
+						ts_status = 'senior synonym'
+					elif int(syn_year) > int(row[year_index]):
+						ts_status = 'junior synonym'
+					else:
+						ts_status = 'synonym'
+				else:
+					ts_status = 'synonym'
 
 				syn_row = [None for col in out_header]
 				syn_taxon_id, taxonID_entries = generate_taxonID(taxonID_entries)
 				syn_indexes = [id_index, out_pnu_index, out_anu_index, out_sn_index, out_sna_index, cn_index, out_gn_index, ep_index, out_tr_index, out_ts_index, out_ns_index, genus_index]
 				syn_values = [syn_taxon_id, out_row[out_pnu_index], row_id, scientific_name, syn_authorship, canonical_name, row[genus_index], syn_epithet, \
-								'species', 'synonym', nomenclatural_status, row[genus_index]]
+								'species', ts_status, nomenclatural_status, row[genus_index]]
 				for index, value in zip(syn_indexes, syn_values):
 					syn_row[index] = value
 				out_rows.append(syn_row)
@@ -389,37 +410,37 @@ def taxonIDs_across_MDD():
 	return list(taxonIDs)
 
 if __name__=='__main__':
-	# parser = argparse.ArgumentParser()
-	# parser.add_argument('--input', default='MDD_v1_6495species_JMamm.csv', \
-	# 					help='name of the input file to be mapped to DwC format. The file must be in CSV format')
-	# parser.add_argument('--output', help='name of the output file')
-	# args=parser.parse_args()
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--input', default='MDD_v1_6495species_JMamm.csv', \
+						help='name of the input file to be mapped to DwC format. The file must be in CSV format')
+	parser.add_argument('--output', help='name of the output file')
+	args=parser.parse_args()
 
-	# outfile = args.output
-	# if outfile is None: outfile =f'{args.input.rsplit(".", 1)[0]}_inDwC.csv'
+	outfile = args.output
+	if outfile is None: outfile =f'{args.input.rsplit(".", 1)[0]}_inDwC.csv'
 
-	# genus_entries, subgenus_entries = genus_subgenus_entries_across_MDD()
-	# taxonID_entries = taxonIDs_across_MDD()
+	genus_entries, subgenus_entries = genus_subgenus_entries_across_MDD()
+	taxonID_entries = taxonIDs_across_MDD()
 
-	# with open(args.input) as f1, open(outfile, 'w') as f2:
-	# 	map_MDD_to_DwC(f1, f2)
+	with open(args.input) as f1, open(outfile, 'w') as f2:
+		map_MDD_to_DwC(f1, f2)
 
-	for file_ in MDD_vers:
-		with open(file_) as f:
-			reader = csv.DictReader(f)
-			tax_ids = []
-			for row in reader:
-				tax_ids.append([row[key] for key in row if key in ['id', 'taxonID', 'ID_number']][0])
+	# for file_ in MDD_vers:
+	# 	with open(file_) as f:
+	# 		reader = csv.DictReader(f)
+	# 		tax_ids = []
+	# 		for row in reader:
+	# 			tax_ids.append([row[key] for key in row if key in ['id', 'taxonID', 'ID_number']][0])
 
-			if len(list(set(tax_ids))) == len(tax_ids):
-				print(f'No duplicate key in {file_}')
-			else:
-				unique_ids = set()
-				for id_ in tax_ids:
-					if id_ is not None and id_ not in unique_ids:
-						unique_ids.add(id_)
-					else:
-						print(f'duplicate id in {file_} : {id_}')
+	# 		if len(list(set(tax_ids))) == len(tax_ids):
+	# 			print(f'No duplicate key in {file_}')
+	# 		else:
+	# 			unique_ids = set()
+	# 			for id_ in tax_ids:
+	# 				if id_ is not None and id_ not in unique_ids:
+	# 					unique_ids.add(id_)
+	# 				else:
+	# 					print(f'duplicate id in {file_} : {id_}')
 
 
 
