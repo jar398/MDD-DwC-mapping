@@ -5,21 +5,21 @@ from util import find_index, del_list_indexes, generate_hash, generate_taxonID
 
 MDD_vers= [
 		# 'MDD_v1_6495species_JMamm.csv', 
-		# 'MDD_v1.1_6526species.csv', 
-		# 'MDD_v1.2_6485species.csv', 
-		# 'MDD_v1.3_6513species.csv', 
-		# 'MDD_v1.31_6513species.csv', 
-		# 'MDD_v1.4_6533species.csv', 
-		# 'MDD_v1.5_6554species.csv',
+		'MDD_v1.1_6526species.csv', 
+		'MDD_v1.2_6485species.csv', 
+		'MDD_v1.3_6513species.csv', 
+		'MDD_v1.31_6513species.csv', 
+		'MDD_v1.4_6533species.csv', 
+		'MDD_v1.5_6554species.csv',
 		'MDD_v1.6_6557species.csv', 
 		'MDD_v1.7_6567species.csv',
 		'MDD_v1_6495species_JMamm_inDwC.csv', 
-		'MDD_v1.1_6526species_inDwC.csv', 
-		'MDD_v1.2_6485species_inDwC.csv', 
-		'MDD_v1.3_6513species_inDwC.csv', 
-		'MDD_v1.31_6513species_inDwC.csv', 
-		'MDD_v1.4_6533species_inDwC.csv', 
-		'MDD_v1.5_6554species_inDwC.csv',
+		# 'MDD_v1.1_6526species_inDwC.csv', 
+		# 'MDD_v1.2_6485species_inDwC.csv', 
+		# 'MDD_v1.3_6513species_inDwC.csv', 
+		# 'MDD_v1.31_6513species_inDwC.csv', 
+		# 'MDD_v1.4_6533species_inDwC.csv', 
+		# 'MDD_v1.5_6554species_inDwC.csv',
 		# 'MDD_v1.6_6557species_inDwC.csv', 
 		# 'MDD_v1.7_6567species_inDwC.csv',
 ]
@@ -121,6 +121,7 @@ MDD_DwC_mapping = {
 }
 
 MDD_new_columns = [
+		'managedID',
 		'parentNameUsageID',
 		'acceptedNameUsageID',
 		'scientificName',
@@ -145,7 +146,7 @@ def map_MDD_to_DwC(infile, outfile):
 	paranthesis_index = find_index(DwC_header, 'authorityParentheses')
 	cn_index = find_index(DwC_header, 'canonicalName')
 	ep_index = find_index(DwC_header, 'specificEpithet')
-	if ep_index == None: ep_index = -1
+	if ep_index == None: ep_index = len(DwC_header)
 	genus_index = find_index(DwC_header, 'genus')
 	subgenus_index = find_index(DwC_header, 'subgenus')
 	nn_index = find_index(DwC_header, 'nominalNames')
@@ -164,6 +165,7 @@ def map_MDD_to_DwC(infile, outfile):
 	for col in MDD_new_columns:
 		out_header.append(col)
 
+	out_mid_index = find_index(out_header, 'managedID')
 	out_pnu_index = find_index(out_header, 'parentNameUsageID')
 	out_anu_index = find_index(out_header, 'acceptedNameUsageID')
 	out_sn_index = find_index(out_header, 'scientificName')
@@ -190,11 +192,12 @@ def map_MDD_to_DwC(infile, outfile):
 			row_id, taxonID_entries = generate_taxonID(taxonID_entries)
 		file_taxonID_list.append(row_id)
 
-		if ep_index == -1:
-			row[ep_index] = row[cn_index].split('_')[1]
+		if ep_index == len(row):
+			row.append(row[cn_index].split('_')[1])
 
 		out_row = row + [None for i in range(len(MDD_new_columns))]
 		out_row[id_index] = row_id
+		out_row[out_mid_index] = row_id
 		columns_to_capitalize = [i for i in [order_index, suborder_index, infraorder_index, parvorder_index, superfamily_index, family_index, subfamily_index, tribe_index] if i is not None]
 
 		for index in columns_to_capitalize:
@@ -234,7 +237,7 @@ def map_MDD_to_DwC(infile, outfile):
 				for index, value in zip(genus_row_indexes_to_be_filled, values):
 					out_genus_row[index] = value
 				out_rows.append(out_genus_row)
-				genus_entries.append({'taxonID': taxon_id, 'canonicalName': row[genus_index], 'taxonRank': 'genus', 'taxonomicStatus': 'accepted', \
+				genus_entries.append({'taxonID': taxon_id, 'managedID': taxon_id, 'canonicalName': row[genus_index], 'taxonRank': 'genus', 'taxonomicStatus': 'accepted', \
 												'genus': row[genus_index], 'genericName': row[genus_index]})
 			else:
 				genus_row_added_to_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='genus' and out_row[cn_index]==row[genus_index]]
@@ -391,9 +394,9 @@ def genus_subgenus_entries_across_MDD():
 				if 'taxonRank' not in row:
 					break
 				else:
-					if row['taxonRank']=='genus' and any([True for dict_ in genus_entries if row['canonicalName'] == dict_['canonicalName']]):
+					if row['taxonRank']=='genus' and all([True for dict_ in genus_entries if row['canonicalName'] != dict_['canonicalName']]):
 						genus_entries.append(row)
-					if row['taxonRank']=='subgenus' and any([True for dict_ in subgenus_entries if row['canonicalName'] == dict_['canonicalName']]):
+					if row['taxonRank']=='subgenus' and all([True for dict_ in subgenus_entries if row['canonicalName'] != dict_['canonicalName']]):
 						subgenus_entries.append(row)
 
 	return genus_entries, subgenus_entries
