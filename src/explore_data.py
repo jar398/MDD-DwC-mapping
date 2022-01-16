@@ -4,7 +4,7 @@ import csv, argparse, sys, re
 from util import find_index, del_list_indexes, generate_hash, generate_taxonID
 
 MDD_vers= [
-		# 'MDD_v1_6495species_JMamm.csv', 
+		'MDD_v1_6495species_JMamm.csv', 
 		'MDD_v1.1_6526species.csv', 
 		'MDD_v1.2_6485species.csv', 
 		'MDD_v1.3_6513species.csv', 
@@ -13,7 +13,7 @@ MDD_vers= [
 		'MDD_v1.5_6554species.csv',
 		'MDD_v1.6_6557species.csv', 
 		'MDD_v1.7_6567species.csv',
-		'MDD_v1_6495species_JMamm_inDwC.csv', 
+		# 'MDD_v1_6495species_JMamm_inDwC.csv', 
 		# 'MDD_v1.1_6526species_inDwC.csv', 
 		# 'MDD_v1.2_6485species_inDwC.csv', 
 		# 'MDD_v1.3_6513species_inDwC.csv', 
@@ -133,7 +133,7 @@ MDD_new_columns = [
 		'scientificNameHashKey',
 ]
 
-subgenus_entries, genus_entries, taxonID_entries = [], [], []
+subgenus_entries, genus_entries, synonym_entries, taxonID_entries = [], [], [], []
 
 def map_MDD_to_DwC(infile, outfile):
 	reader = csv.reader(infile)
@@ -178,6 +178,7 @@ def map_MDD_to_DwC(infile, outfile):
 
 	out_rows =[]
 	file_taxonID_list = []
+	syn_species_dict = {}
 	global subgenus_entries, genus_entries, taxonID_entries
 
 	for row in reader:
@@ -315,8 +316,10 @@ def map_MDD_to_DwC(infile, outfile):
 		out_rows.append(out_row)
 		
 		if nn_index is not None and row[nn_index] is not None:
-			synonyms_list = row[nn_index].split('|')
-			for syn in synonyms_list:
+			syn_list = row[nn_index].split('|')
+			unique_syn_list = [] # to check multiple entries of the same synonym for a species
+
+			for syn in syn_list:
 				if syn.strip() == '': continue
 				syn_epithet, syn_authorship = syn.split(' ', 1)
 				if syn_epithet == row[ep_index]: continue
@@ -332,9 +335,27 @@ def map_MDD_to_DwC(infile, outfile):
 					assert False, f'nominal name - {syn} - formating error'
 				else:
 					nomenclatural_status = ''
+
+				if f'{syn_epithet} {syn_authorship}' in unique_syn_list:
+					print(f'row with duplicate synonyms: {out_row[out_sn_index]}')
+					continue
+				else:
+					unique_syn_list.append(f'{syn_epithet} {syn_authorship}')
 				
 				scientific_name = f'{row[genus_index]} {syn_epithet} {syn_authorship}'
 				canonical_name = f'{row[genus_index]} {syn_epithet}'
+
+				if f'{syn_epithet} {syn_authorship}' in syn_species_dict:
+					syn_species_dict[f'{syn_epithet} {syn_authorship}'].append(out_row[cn_index])
+					continue
+				else:
+					syn_species_dict[f'{syn_epithet} {syn_authorship}'] = [out_row[cn_index]]
+
+				# find if a synonym is repeated in the file, perhaps linked to more than one species
+				# if [row for row in out_rows if row[out_ts_index] in ['junior synonym', 'senior synonym', 'synonym'] and row[out_sna_index]==syn_authorship and \
+				# 		row[ep_index]==syn_epithet]:
+				# 	# print(f'{syn_epithet} {syn_authorship}  -  {out_row[cn_index]}')
+				# 	continue
 
 				#Find if a synonym is junior or senior synonym
 				find_syn_year = re.match(r'.*([1-3][0-9]{3})', syn_authorship)
@@ -349,15 +370,25 @@ def map_MDD_to_DwC(infile, outfile):
 				else:
 					ts_status = 'synonym'
 
+				exist_synonym = is_synonym_row_available(scientific_name, row_id)
 				syn_row = [None for col in out_header]
-				syn_taxon_id, taxonID_entries = generate_taxonID(taxonID_entries)
 				syn_indexes = [id_index, out_pnu_index, out_anu_index, out_sn_index, out_sna_index, cn_index, out_gn_index, ep_index, out_tr_index, out_ts_index, out_ns_index, genus_index]
+				if not exist_synonym:
+					syn_taxon_id, taxonID_entries = generate_taxonID(taxonID_entries)
+				else:
+					syn_taxon_id = exist_synonym['taxonID']
 				syn_values = [syn_taxon_id, out_row[out_pnu_index], row_id, scientific_name, syn_authorship, canonical_name, row[genus_index], syn_epithet, \
 								'species', ts_status, nomenclatural_status, row[genus_index]]
 				for index, value in zip(syn_indexes, syn_values):
 					syn_row[index] = value
+
+				
 				out_rows.append(syn_row)
 
+	print("===============================================")
+	for k, v in syn_species_dict.items():
+		if len(v)>1:
+			print(f'{k}  -  {", ".join(v)}')
 	writer = csv.writer(outfile)
 	indexes_to_delete = {author_index, year_index, paranthesis_index, nn_index}
 	out_header = del_list_indexes(out_header, indexes_to_delete)
@@ -384,9 +415,19 @@ def is_subgenus_row_available(subgenus_name):
 
 	return False
 
-def genus_subgenus_entries_across_MDD():
+def is_synonym_row_available(synonym_scientific_name, anu_id):
+	if len(synonym_entries)==0: return False
+
+	for synonym_row in synonym_entries:
+		if synonym_scientific_name==synonym_row['scientificName'] and anu_id==synonym_row['acceptedNameUsageID']:
+			return synonym_row
+
+	return False
+
+def genus_subgenus_synonym_entries_across_MDD():
 	genus_entries = []	
 	subgenus_entries = []
+	synonym_entries = []
 	for file_ in MDD_vers:
 		with open(file_) as f:
 			reader = csv.DictReader(f)
@@ -398,8 +439,13 @@ def genus_subgenus_entries_across_MDD():
 						genus_entries.append(row)
 					if row['taxonRank']=='subgenus' and all([True for dict_ in subgenus_entries if row['canonicalName'] != dict_['canonicalName']]):
 						subgenus_entries.append(row)
+					if row['taxonRank']=='species' and row['taxonomicStatus'] in ['junior synonym', 'senior synonym', 'synonym'] and \
+						all([True for dict_ in synonym_entries if row['canonicalName'] != dict_['canonicalName']]): \
+							# or row['acceptedNameUsageID'] != dict_['acceptedNameUsageID']]):
+						synonym_entries.append(row)
 
-	return genus_entries, subgenus_entries
+	return genus_entries, subgenus_entries, synonym_entries
+
 
 def taxonIDs_across_MDD():
 	taxonIDs = set()
@@ -422,7 +468,7 @@ if __name__=='__main__':
 	outfile = args.output
 	if outfile is None: outfile =f'{args.input.rsplit(".", 1)[0]}_inDwC.csv'
 
-	genus_entries, subgenus_entries = genus_subgenus_entries_across_MDD()
+	genus_entries, subgenus_entries, synonym_entries = genus_subgenus_synonym_entries_across_MDD()
 	taxonID_entries = taxonIDs_across_MDD()
 
 	with open(args.input) as f1, open(outfile, 'w') as f2:
