@@ -121,7 +121,6 @@ MDD_DwC_mapping = {
 }
 
 MDD_new_columns = [
-		'managedID',
 		'parentNameUsageID',
 		'acceptedNameUsageID',
 		'scientificName',
@@ -169,7 +168,6 @@ def map_MDD_to_DwC(infile, outfile):
 	for col in MDD_new_columns:
 		out_header.append(col)
 
-	# out_mid_index = find_index(out_header, 'managedID')
 	out_pnu_index = find_index(out_header, 'parentNameUsageID')
 	out_anu_index = find_index(out_header, 'acceptedNameUsageID')
 	out_sn_index = find_index(out_header, 'scientificName')
@@ -186,6 +184,23 @@ def map_MDD_to_DwC(infile, outfile):
 	global synonym_entries, subgenus_entries, genus_entries, tribe_entries, subfamily_entries, family_entries, superfamily_entries, parvorder_entries, \
 	infraorder_entries, suborder_entries, order_entries, superorder_entries, magnorder_entries, infraclass_entries, subclass_entries, taxonID_entries
 	count = 0
+
+	def add_entry_to_output(canonicalName, taxonomicRank, parentNameUsageID, index):
+		added_to_output_list = [out_row for out_row in out_rows if out_row[out_tr_index]==taxonomicRank and out_row[cn_index]==canonicalName]
+		if added_to_output_list:
+			parent_id = added_to_output_list[0][id_index]
+		else:
+			taxon_entry = create_higher_taxa_entry(canonicalName, taxonomicRank, parentNameUsageID)
+			output_taxon_row = [None for col in out_header]
+			indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, index, out_pnu_index]
+			values = [taxon_entry['taxonID'], taxon_entry['canonicalName'], taxon_entry['taxonomicRank'], taxon_entry['taxonomicStatus'], \
+							taxon_entry[taxonomicRank], taxon_entry['parentNameUsageID']]
+			for indx, value in zip(indexes_to_be_filled, values):
+				output_taxon_row[indx] = value
+			out_rows.append(output_taxon_row)
+			parent_id = taxon_entry['taxonID']
+		return parent_id
+
 	for row in reader:
 		if len(row) != len(DwC_header):
 			print(f'Unexpected number of columns in a row: expected {len(DwC_header)} vs actual {len(row)}', file=sys.stderr)
@@ -203,8 +218,8 @@ def map_MDD_to_DwC(infile, outfile):
 
 		out_row = row + [None for i in range(len(MDD_new_columns))]
 		out_row[id_index] = row_id
-		# out_row[out_mid_index] = row_id
-		columns_to_capitalize = [i for i in [order_index, suborder_index, infraorder_index, parvorder_index, superfamily_index, family_index, subfamily_index, tribe_index] if i is not None]
+		columns_to_capitalize = [i for i in [subclass_index, infraclass_index, magnorder_index, superorder_index, order_index, suborder_index, infraorder_index, \
+									parvorder_index, superfamily_index, family_index, subfamily_index, tribe_index] if i is not None]
 
 		for index in columns_to_capitalize:
 			if out_row[index] is not None and out_row[index] != 'NA':
@@ -232,229 +247,251 @@ def map_MDD_to_DwC(infile, outfile):
 
 		parent_id = None
 
-		# Create new row for subclass if it doesn't already exist
-		if subclass_index is not None and row[subclass_index] is not None and row[subclass_index] != 'NA':
-			subclass_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='subclass' and out_row[cn_index]==row[subclass_index]]
-			if subclass_in_out_rows:
-				parent_id = subclass_in_out_rows[0][id_index]
-			else:
-				subclass_entry = create_higher_taxa_entry(row[subclass_index], 'subclass', parent_id)
-				out_subclass_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, subclass_index, out_pnu_index]
-				values = [subclass_entry['taxonID'], subclass_entry['canonicalName'], subclass_entry['taxonomicRank'], subclass_entry['taxonomicStatus'], \
-							subclass_entry['subclass'], subclass_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_subclass_row[index] = value
-				out_rows.append(out_subclass_row)
-				parent_id = subclass_entry['taxonID']
+		taxa = [
+				[subclass_index, 'subclass'],
+				[infraclass_index, 'infraclass'],
+				[magnorder_index, 'magnorder'],
+				[superorder_index, 'superorder'],
+				[order_index, 'order'],
+				[suborder_index, 'suborder'],
+				[infraorder_index, 'infraorder'],
+				[parvorder_index, 'parvorder'],
+				[superfamily_index, 'superfamily'],
+				[family_index, 'family'],
+				[subfamily_index, 'subfamily'],
+				[tribe_index, 'tribe'],
+				[genus_index, 'genus'],
+				[subgenus_index, 'subgenus'],
+			]
 
-		# create new row for infraclass if it doesn't already exist
-		if infraclass_index is not None and row[infraclass_index] is not None and row[infraclass_index] != 'NA':
-			infraclass_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='infraclass' and out_row[cn_index]==row[infraclass_index]]
-			if infraclass_in_out_rows:
-				parent_id = infraclass_in_out_rows[0][id_index]
-			else:
-				infraclass_entry = create_higher_taxa_entry(row[infraclass_index], 'infraclass', parent_id)
-				out_infraclass_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, infraclass_index, out_pnu_index]
-				values = [infraclass_entry['taxonID'], infraclass_entry['canonicalName'], infraclass_entry['taxonomicRank'], infraclass_entry['taxonomicStatus'], \
-							infraclass_entry['infraclass'], infraclass_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_infraclass_row[index] = value
-				out_rows.append(out_infraclass_row)
-				parent_id = infraclass_entry['taxonID']
+		for taxa_details in taxa:
+			if taxa_details[0] is not None and row[taxa_details[0]] is not None and row[taxa_details[0]] != 'NA':
+				parent_id = add_entry_to_output(row[taxa_details[0]].capitalize(), taxa_details[1], parent_id, taxa_details[0])
 
-		# create new row for infraclass if it doesn't already exist
-		if magnorder_index is not None and row[magnorder_index] is not None and row[magnorder_index] != 'NA':
-			magnorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='magnorder' and out_row[cn_index]==row[magnorder_index]]
-			if magnorder_in_out_rows:
-				parent_id = magnorder_in_out_rows[0][id_index]
-			else:
-				magnorder_entry = create_higher_taxa_entry(row[magnorder_index], 'magnorder', parent_id)
-				out_magnorder_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, magnorder_index, out_pnu_index]
-				values = [magnorder_entry['taxonID'], magnorder_entry['canonicalName'], magnorder_entry['taxonomicRank'], magnorder_entry['taxonomicStatus'], \
-							magnorder_entry['magnorder'], magnorder_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_magnorder_row[index] = value
-				out_rows.append(out_magnorder_row)
-				parent_id = magnorder_entry['taxonID']
+		# # Create new row for subclass if it doesn't already exist
+		# if subclass_index is not None and row[subclass_index] is not None and row[subclass_index] != 'NA':
+		# 	parent_id = add_entry_to_output(row[subclass_index], 'subclass', parent_id, subclass_index)
+		# 	subclass_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='subclass' and out_row[cn_index]==row[subclass_index]]
+		# 	if subclass_in_out_rows:
+		# 		parent_id = subclass_in_out_rows[0][id_index]
+		# 	else:
+		# 		subclass_entry = create_higher_taxa_entry(row[subclass_index], 'subclass', parent_id)
+		# 		out_subclass_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, subclass_index, out_pnu_index]
+		# 		values = [subclass_entry['taxonID'], subclass_entry['canonicalName'], subclass_entry['taxonomicRank'], subclass_entry['taxonomicStatus'], \
+		# 					subclass_entry['subclass'], subclass_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_subclass_row[index] = value
+		# 		out_rows.append(out_subclass_row)
+		# 		parent_id = subclass_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if superorder_index is not None and row[superorder_index] is not None and row[superorder_index] != 'NA':
-			superorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='superorder' and out_row[cn_index]==row[superorder_index]]
-			if superorder_in_out_rows:
-				parent_id = superorder_in_out_rows[0][id_index]
-			else:
-				superorder_entry = create_higher_taxa_entry(row[superorder_index], 'superorder', parent_id)
-				out_superorder_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, superorder_index, out_pnu_index]
-				values = [superorder_entry['taxonID'], superorder_entry['canonicalName'], superorder_entry['taxonomicRank'], superorder_entry['taxonomicStatus'], \
-							superorder_entry['superorder'], superorder_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_superorder_row[index] = value
-				out_rows.append(out_superorder_row)
-				parent_id = superorder_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if infraclass_index is not None and row[infraclass_index] is not None and row[infraclass_index] != 'NA':
+		# 	infraclass_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='infraclass' and out_row[cn_index]==row[infraclass_index]]
+		# 	if infraclass_in_out_rows:
+		# 		parent_id = infraclass_in_out_rows[0][id_index]
+		# 	else:
+		# 		infraclass_entry = create_higher_taxa_entry(row[infraclass_index], 'infraclass', parent_id)
+		# 		out_infraclass_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, infraclass_index, out_pnu_index]
+		# 		values = [infraclass_entry['taxonID'], infraclass_entry['canonicalName'], infraclass_entry['taxonomicRank'], infraclass_entry['taxonomicStatus'], \
+		# 					infraclass_entry['infraclass'], infraclass_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_infraclass_row[index] = value
+		# 		out_rows.append(out_infraclass_row)
+		# 		parent_id = infraclass_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if order_index is not None and row[order_index] is not None and row[order_index] != 'NA':
-			order_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='order' and out_row[cn_index]==row[order_index]]
-			if order_in_out_rows:
-				parent_id = order_in_out_rows[0][id_index]
-			else:
-				order_entry = create_higher_taxa_entry(row[order_index], 'order', parent_id)
-				out_order_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, order_index, out_pnu_index]
-				values = [order_entry['taxonID'], order_entry['canonicalName'], order_entry['taxonomicRank'], order_entry['taxonomicStatus'], \
-							order_entry['order'], order_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_order_row[index] = value
-				out_rows.append(out_order_row)
-				parent_id = order_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if magnorder_index is not None and row[magnorder_index] is not None and row[magnorder_index] != 'NA':
+		# 	magnorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='magnorder' and out_row[cn_index]==row[magnorder_index]]
+		# 	if magnorder_in_out_rows:
+		# 		parent_id = magnorder_in_out_rows[0][id_index]
+		# 	else:
+		# 		magnorder_entry = create_higher_taxa_entry(row[magnorder_index], 'magnorder', parent_id)
+		# 		out_magnorder_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, magnorder_index, out_pnu_index]
+		# 		values = [magnorder_entry['taxonID'], magnorder_entry['canonicalName'], magnorder_entry['taxonomicRank'], magnorder_entry['taxonomicStatus'], \
+		# 					magnorder_entry['magnorder'], magnorder_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_magnorder_row[index] = value
+		# 		out_rows.append(out_magnorder_row)
+		# 		parent_id = magnorder_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if suborder_index is not None and row[suborder_index] is not None and row[suborder_index] != 'NA':
-			suborder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='suborder' and out_row[cn_index]==row[suborder_index]]
-			if suborder_in_out_rows:
-				parent_id = suborder_in_out_rows[0][id_index]
-			else:
-				suborder_entry = create_higher_taxa_entry(row[suborder_index], 'suborder', parent_id)
-				out_suborder_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, suborder_index, out_pnu_index]
-				values = [suborder_entry['taxonID'], suborder_entry['canonicalName'], suborder_entry['taxonomicRank'], suborder_entry['taxonomicStatus'], \
-							suborder_entry['suborder'], suborder_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_suborder_row[index] = value
-				out_rows.append(out_suborder_row)
-				parent_id = suborder_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if superorder_index is not None and row[superorder_index] is not None and row[superorder_index] != 'NA':
+		# 	superorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='superorder' and out_row[cn_index]==row[superorder_index]]
+		# 	if superorder_in_out_rows:
+		# 		parent_id = superorder_in_out_rows[0][id_index]
+		# 	else:
+		# 		superorder_entry = create_higher_taxa_entry(row[superorder_index], 'superorder', parent_id)
+		# 		out_superorder_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, superorder_index, out_pnu_index]
+		# 		values = [superorder_entry['taxonID'], superorder_entry['canonicalName'], superorder_entry['taxonomicRank'], superorder_entry['taxonomicStatus'], \
+		# 					superorder_entry['superorder'], superorder_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_superorder_row[index] = value
+		# 		out_rows.append(out_superorder_row)
+		# 		parent_id = superorder_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if infraorder_index is not None and row[infraorder_index] is not None and row[infraorder_index] != 'NA':
-			infraorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='infraorder' and out_row[cn_index]==row[infraorder_index]]
-			if infraorder_in_out_rows:
-				parent_id = infraorder_in_out_rows[0][id_index]
-			else:
-				infraorder_entry = create_higher_taxa_entry(row[infraorder_index], 'infraorder', parent_id)
-				out_infraorder_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, infraorder_index, out_pnu_index]
-				values = [infraorder_entry['taxonID'], infraorder_entry['canonicalName'], infraorder_entry['taxonomicRank'], infraorder_entry['taxonomicStatus'], \
-							infraorder_entry['infraorder'], infraorder_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_infraorder_row[index] = value
-				out_rows.append(out_infraorder_row)
-				parent_id = infraorder_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if order_index is not None and row[order_index] is not None and row[order_index] != 'NA':
+		# 	order_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='order' and out_row[cn_index]==row[order_index]]
+		# 	if order_in_out_rows:
+		# 		parent_id = order_in_out_rows[0][id_index]
+		# 	else:
+		# 		order_entry = create_higher_taxa_entry(row[order_index], 'order', parent_id)
+		# 		out_order_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, order_index, out_pnu_index]
+		# 		values = [order_entry['taxonID'], order_entry['canonicalName'], order_entry['taxonomicRank'], order_entry['taxonomicStatus'], \
+		# 					order_entry['order'], order_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_order_row[index] = value
+		# 		out_rows.append(out_order_row)
+		# 		parent_id = order_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if parvorder_index is not None and row[parvorder_index] is not None and row[parvorder_index] != 'NA':
-			parvorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='parvorder' and out_row[cn_index]==row[parvorder_index]]
-			if parvorder_in_out_rows:
-				parent_id = parvorder_in_out_rows[0][id_index]
-			else:
-				parvorder_entry = create_higher_taxa_entry(row[parvorder_index], 'parvorder', parent_id)
-				out_parvorder_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, parvorder_index, out_pnu_index]
-				values = [parvorder_entry['taxonID'], parvorder_entry['canonicalName'], parvorder_entry['taxonomicRank'], parvorder_entry['taxonomicStatus'], \
-							parvorder_entry['parvorder'], parvorder_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_parvorder_row[index] = value
-				out_rows.append(out_parvorder_row)
-				parent_id = parvorder_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if suborder_index is not None and row[suborder_index] is not None and row[suborder_index] != 'NA':
+		# 	suborder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='suborder' and out_row[cn_index]==row[suborder_index]]
+		# 	if suborder_in_out_rows:
+		# 		parent_id = suborder_in_out_rows[0][id_index]
+		# 	else:
+		# 		suborder_entry = create_higher_taxa_entry(row[suborder_index], 'suborder', parent_id)
+		# 		out_suborder_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, suborder_index, out_pnu_index]
+		# 		values = [suborder_entry['taxonID'], suborder_entry['canonicalName'], suborder_entry['taxonomicRank'], suborder_entry['taxonomicStatus'], \
+		# 					suborder_entry['suborder'], suborder_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_suborder_row[index] = value
+		# 		out_rows.append(out_suborder_row)
+		# 		parent_id = suborder_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if superfamily_index is not None and row[superfamily_index] is not None and row[superfamily_index] != 'NA':
-			superfamily_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='superfamily' and out_row[cn_index]==row[superfamily_index]]
-			if superfamily_in_out_rows:
-				parent_id = superfamily_in_out_rows[0][id_index]
-			else:
-				superfamily_entry = create_higher_taxa_entry(row[superfamily_index], 'superfamily', parent_id)
-				out_superfamily_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, superfamily_index, out_pnu_index]
-				values = [superfamily_entry['taxonID'], superfamily_entry['canonicalName'], superfamily_entry['taxonomicRank'], superfamily_entry['taxonomicStatus'], \
-							superfamily_entry['superfamily'], superfamily_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_superfamily_row[index] = value
-				out_rows.append(out_superfamily_row)
-				parent_id = superfamily_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if infraorder_index is not None and row[infraorder_index] is not None and row[infraorder_index] != 'NA':
+		# 	infraorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='infraorder' and out_row[cn_index]==row[infraorder_index]]
+		# 	if infraorder_in_out_rows:
+		# 		parent_id = infraorder_in_out_rows[0][id_index]
+		# 	else:
+		# 		infraorder_entry = create_higher_taxa_entry(row[infraorder_index], 'infraorder', parent_id)
+		# 		out_infraorder_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, infraorder_index, out_pnu_index]
+		# 		values = [infraorder_entry['taxonID'], infraorder_entry['canonicalName'], infraorder_entry['taxonomicRank'], infraorder_entry['taxonomicStatus'], \
+		# 					infraorder_entry['infraorder'], infraorder_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_infraorder_row[index] = value
+		# 		out_rows.append(out_infraorder_row)
+		# 		parent_id = infraorder_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if family_index is not None and row[family_index] is not None and row[family_index] != 'NA':
-			family_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='family' and out_row[cn_index]==row[family_index]]
-			if family_in_out_rows:
-				parent_id = family_in_out_rows[0][id_index]
-			else:
-				family_entry = create_higher_taxa_entry(row[family_index], 'family', parent_id)
-				out_family_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, family_index, out_pnu_index]
-				values = [family_entry['taxonID'], family_entry['canonicalName'], family_entry['taxonomicRank'], family_entry['taxonomicStatus'], \
-							family_entry['family'], family_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_family_row[index] = value
-				out_rows.append(out_family_row)
-				parent_id = family_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if parvorder_index is not None and row[parvorder_index] is not None and row[parvorder_index] != 'NA':
+		# 	parvorder_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='parvorder' and out_row[cn_index]==row[parvorder_index]]
+		# 	if parvorder_in_out_rows:
+		# 		parent_id = parvorder_in_out_rows[0][id_index]
+		# 	else:
+		# 		parvorder_entry = create_higher_taxa_entry(row[parvorder_index], 'parvorder', parent_id)
+		# 		out_parvorder_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, parvorder_index, out_pnu_index]
+		# 		values = [parvorder_entry['taxonID'], parvorder_entry['canonicalName'], parvorder_entry['taxonomicRank'], parvorder_entry['taxonomicStatus'], \
+		# 					parvorder_entry['parvorder'], parvorder_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_parvorder_row[index] = value
+		# 		out_rows.append(out_parvorder_row)
+		# 		parent_id = parvorder_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if subfamily_index is not None and row[subfamily_index] is not None and row[subfamily_index] != 'NA':
-			subfamily_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='subfamily' and out_row[cn_index]==row[subfamily_index]]
-			if subfamily_in_out_rows:
-				parent_id = subfamily_in_out_rows[0][id_index]
-			else:
-				subfamily_entry = create_higher_taxa_entry(row[subfamily_index], 'subfamily', parent_id)
-				out_subfamily_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, subfamily_index, out_pnu_index]
-				values = [subfamily_entry['taxonID'], subfamily_entry['canonicalName'], subfamily_entry['taxonomicRank'], subfamily_entry['taxonomicStatus'], \
-							subfamily_entry['subfamily'], subfamily_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_subfamily_row[index] = value
-				out_rows.append(out_subfamily_row)
-				parent_id = subfamily_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if superfamily_index is not None and row[superfamily_index] is not None and row[superfamily_index] != 'NA':
+		# 	superfamily_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='superfamily' and out_row[cn_index]==row[superfamily_index]]
+		# 	if superfamily_in_out_rows:
+		# 		parent_id = superfamily_in_out_rows[0][id_index]
+		# 	else:
+		# 		superfamily_entry = create_higher_taxa_entry(row[superfamily_index], 'superfamily', parent_id)
+		# 		out_superfamily_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, superfamily_index, out_pnu_index]
+		# 		values = [superfamily_entry['taxonID'], superfamily_entry['canonicalName'], superfamily_entry['taxonomicRank'], superfamily_entry['taxonomicStatus'], \
+		# 					superfamily_entry['superfamily'], superfamily_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_superfamily_row[index] = value
+		# 		out_rows.append(out_superfamily_row)
+		# 		parent_id = superfamily_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if tribe_index is not None and row[tribe_index] is not None and row[tribe_index] != 'NA':
-			tribe_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='tribe' and out_row[cn_index]==row[tribe_index]]
-			if tribe_in_out_rows:
-				parent_id = tribe_in_out_rows[0][id_index]
-			else:
-				tribe_entry = create_higher_taxa_entry(row[tribe_index], 'tribe', parent_id)
-				out_tribe_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, tribe_index, out_pnu_index]
-				values = [tribe_entry['taxonID'], tribe_entry['canonicalName'], tribe_entry['taxonomicRank'], tribe_entry['taxonomicStatus'], \
-							tribe_entry['tribe'], tribe_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_tribe_row[index] = value
-				out_rows.append(out_tribe_row)
-				parent_id = tribe_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if family_index is not None and row[family_index] is not None and row[family_index] != 'NA':
+		# 	family_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='family' and out_row[cn_index]==row[family_index]]
+		# 	if family_in_out_rows:
+		# 		parent_id = family_in_out_rows[0][id_index]
+		# 	else:
+		# 		family_entry = create_higher_taxa_entry(row[family_index], 'family', parent_id)
+		# 		out_family_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, family_index, out_pnu_index]
+		# 		values = [family_entry['taxonID'], family_entry['canonicalName'], family_entry['taxonomicRank'], family_entry['taxonomicStatus'], \
+		# 					family_entry['family'], family_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_family_row[index] = value
+		# 		out_rows.append(out_family_row)
+		# 		parent_id = family_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if genus_index is not None and row[genus_index] is not None and row[genus_index] != 'NA':
-			genus_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='genus' and out_row[cn_index]==row[genus_index]]
-			if genus_in_out_rows:
-				parent_id = genus_in_out_rows[0][id_index]
-			else:
-				genus_entry = create_higher_taxa_entry(row[genus_index], 'genus', parent_id)
-				out_genus_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, genus_index, out_pnu_index]
-				values = [genus_entry['taxonID'], genus_entry['canonicalName'], genus_entry['taxonomicRank'], genus_entry['taxonomicStatus'], \
-							genus_entry['genus'], genus_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_genus_row[index] = value
-				out_rows.append(out_genus_row)
-				parent_id = genus_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if subfamily_index is not None and row[subfamily_index] is not None and row[subfamily_index] != 'NA':
+		# 	subfamily_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='subfamily' and out_row[cn_index]==row[subfamily_index]]
+		# 	if subfamily_in_out_rows:
+		# 		parent_id = subfamily_in_out_rows[0][id_index]
+		# 	else:
+		# 		subfamily_entry = create_higher_taxa_entry(row[subfamily_index], 'subfamily', parent_id)
+		# 		out_subfamily_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, subfamily_index, out_pnu_index]
+		# 		values = [subfamily_entry['taxonID'], subfamily_entry['canonicalName'], subfamily_entry['taxonomicRank'], subfamily_entry['taxonomicStatus'], \
+		# 					subfamily_entry['subfamily'], subfamily_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_subfamily_row[index] = value
+		# 		out_rows.append(out_subfamily_row)
+		# 		parent_id = subfamily_entry['taxonID']
 
-		# create new row for infraclass if it doesn't already exist
-		if subgenus_index is not None and row[subgenus_index] is not None and row[subgenus_index] != 'NA':
-			subgenus_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='subgenus' and out_row[cn_index]==row[subgenus_index]]
-			if subgenus_in_out_rows:
-				parent_id = subgenus_in_out_rows[0][id_index]
-			else:
-				subgenus_entry = create_higher_taxa_entry(row[subgenus_index], 'subgenus', parent_id)
-				out_subgenus_row = [None for col in out_header]
-				indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, subgenus_index, out_pnu_index]
-				values = [subgenus_entry['taxonID'], subgenus_entry['canonicalName'], subgenus_entry['taxonomicRank'], subgenus_entry['taxonomicStatus'], \
-							subgenus_entry['subgenus'], subgenus_entry['parentNameUsageID']]
-				for index, value in zip(indexes_to_be_filled, values):
-					out_subgenus_row[index] = value
-				out_rows.append(out_subgenus_row)
-				parent_id = subgenus_entry['taxonID']
+		# # create new row for infraclass if it doesn't already exist
+		# if tribe_index is not None and row[tribe_index] is not None and row[tribe_index] != 'NA':
+		# 	tribe_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='tribe' and out_row[cn_index]==row[tribe_index]]
+		# 	if tribe_in_out_rows:
+		# 		parent_id = tribe_in_out_rows[0][id_index]
+		# 	else:
+		# 		tribe_entry = create_higher_taxa_entry(row[tribe_index], 'tribe', parent_id)
+		# 		out_tribe_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, tribe_index, out_pnu_index]
+		# 		values = [tribe_entry['taxonID'], tribe_entry['canonicalName'], tribe_entry['taxonomicRank'], tribe_entry['taxonomicStatus'], \
+		# 					tribe_entry['tribe'], tribe_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_tribe_row[index] = value
+		# 		out_rows.append(out_tribe_row)
+		# 		parent_id = tribe_entry['taxonID']
+
+		# # create new row for infraclass if it doesn't already exist
+		# if genus_index is not None and row[genus_index] is not None and row[genus_index] != 'NA':
+		# 	genus_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='genus' and out_row[cn_index]==row[genus_index]]
+		# 	if genus_in_out_rows:
+		# 		parent_id = genus_in_out_rows[0][id_index]
+		# 	else:
+		# 		genus_entry = create_higher_taxa_entry(row[genus_index], 'genus', parent_id)
+		# 		out_genus_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, genus_index, out_pnu_index]
+		# 		values = [genus_entry['taxonID'], genus_entry['canonicalName'], genus_entry['taxonomicRank'], genus_entry['taxonomicStatus'], \
+		# 					genus_entry['genus'], genus_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_genus_row[index] = value
+		# 		out_rows.append(out_genus_row)
+		# 		parent_id = genus_entry['taxonID']
+
+		# # create new row for infraclass if it doesn't already exist
+		# if subgenus_index is not None and row[subgenus_index] is not None and row[subgenus_index] != 'NA':
+		# 	subgenus_in_out_rows = [out_row for out_row in out_rows if out_row[out_tr_index]=='subgenus' and out_row[cn_index]==row[subgenus_index]]
+		# 	if subgenus_in_out_rows:
+		# 		parent_id = subgenus_in_out_rows[0][id_index]
+		# 	else:
+		# 		subgenus_entry = create_higher_taxa_entry(row[subgenus_index], 'subgenus', parent_id)
+		# 		out_subgenus_row = [None for col in out_header]
+		# 		indexes_to_be_filled = [id_index, cn_index, out_tr_index, out_ts_index, subgenus_index, out_pnu_index]
+		# 		values = [subgenus_entry['taxonID'], subgenus_entry['canonicalName'], subgenus_entry['taxonomicRank'], subgenus_entry['taxonomicStatus'], \
+		# 					subgenus_entry['subgenus'], subgenus_entry['parentNameUsageID']]
+		# 		for index, value in zip(indexes_to_be_filled, values):
+		# 			out_subgenus_row[index] = value
+		# 		out_rows.append(out_subgenus_row)
+		# 		parent_id = subgenus_entry['taxonID']
 
 		out_row[out_pnu_index] = parent_id
 
@@ -632,6 +669,9 @@ def map_MDD_to_DwC(infile, outfile):
 	for row in out_rows:
 		trimmed_row = del_list_indexes(row, indexes_to_delete)
 		writer.writerow(trimmed_row)
+
+
+
 
 def is_taxon_available(name, taxonomic_rank):
 
