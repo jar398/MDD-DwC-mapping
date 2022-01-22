@@ -37,8 +37,7 @@ def has_duplicate_taxonID(file_):
 			for row in reader:
 				id_ = [row[key] for key in row if key in ['id', 'taxonID', 'ID_number']]
 				if '' in id_: id_.remove('')
-				if id_:
-				tax_ids.append(int(id_[0]))
+				if id_: tax_ids.append(int(id_[0]))
 
 			if len(list(set(tax_ids))) == len(tax_ids):
 				print(f'No duplicate taxonID in {file_}')

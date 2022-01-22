@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 
-import csv, argparse, sys, re
+import os, csv, argparse, sys, re
 from util import find_index, del_list_indexes, generate_hash, generate_taxonID
 
-MDD_vers= [
-		'MDD_v1_6495species_JMamm.csv', 
-		'MDD_v1.1_6526species.csv', 
-		'MDD_v1.2_6485species.csv', 
-		'MDD_v1.3_6513species.csv', 
-		'MDD_v1.31_6513species.csv', 
-		'MDD_v1.4_6533species.csv', 
-		'MDD_v1.5_6554species.csv',
-		'MDD_v1.6_6557species.csv', 
-		# 'MDD_v1.7_6567species.csv',
-		# 'MDD_v1_6495species_JMamm_inDwC.csv', 
-		# 'MDD_v1.1_6526species_inDwC.csv', 
-		# 'MDD_v1.2_6485species_inDwC.csv', 
-		# 'MDD_v1.3_6513species_inDwC.csv', 
-		# 'MDD_v1.31_6513species_inDwC.csv', 
-		# 'MDD_v1.4_6533species_inDwC.csv', 
-		# 'MDD_v1.5_6554species_inDwC.csv',
-		# 'MDD_v1.6_6557species_inDwC.csv', 
-		'MDD_v1.7_6567species_inDwC.csv',
-]
+# MDD_input_versions= [
+# 		'MDD_v1_6495species_JMamm.csv', 
+# 		'MDD_v1.1_6526species.csv', 
+# 		'MDD_v1.2_6485species.csv', 
+# 		'MDD_v1.3_6513species.csv', 
+# 		'MDD_v1.31_6513species.csv', 
+# 		'MDD_v1.4_6533species.csv', 
+# 		'MDD_v1.5_6554species.csv',
+# 		'MDD_v1.6_6557species.csv', 
+# 		'MDD_v1.7_6567species.csv',
+# 		'MDD_v1_6495species_JMamm_inDwC.csv', 
+# 		'MDD_v1.1_6526species_inDwC.csv', 
+# 		'MDD_v1.2_6485species_inDwC.csv', 
+# 		'MDD_v1.3_6513species_inDwC.csv', 
+# 		'MDD_v1.31_6513species_inDwC.csv', 
+# 		'MDD_v1.4_6533species_inDwC.csv', 
+# 		'MDD_v1.5_6554species_inDwC.csv',
+# 		'MDD_v1.6_6557species_inDwC.csv', 
+# 		'MDD_v1.7_6567species_inDwC.csv',
+# ]
 
 MDD_DwC_mapping = {
 		'Authority_author': 'scientificNameAuthor',   # scientificNameAuthor,namePublishedInYear and authorityParentheses will be combined to create a new column scientificNameAuthorship
@@ -398,106 +398,115 @@ def create_higher_taxa_entry(canonicalName, taxonomicRank, parentNameUsageID):
 
 	return taxon_entry
 
-def managed_entries_across_MDD():
+def managed_entries_across_MDD(outpath):
 	global synonym_entries, subgenus_entries, genus_entries, tribe_entries, subfamily_entries, family_entries, superfamily_entries, parvorder_entries, \
 	infraorder_entries, suborder_entries, order_entries, superorder_entries, magnorder_entries, infraclass_entries, subclass_entries
 
-	for file_ in MDD_vers:
-		with open(file_) as f:
-			reader = csv.DictReader(f)
-			for row in reader:
-				if 'taxonRank' not in row:
-					break
-				else:
-					if row['taxonRank']=='species' and row['taxonomicStatus'] in ['junior synonym', 'senior synonym', 'synonym']:
-						if any([True for dict_ in synonym_entries if dict_['scientificName']==row['scientificName']]):
-							continue
-						else:
-							synonym_entries.append(row)
-					elif row['taxonRank']=='subgenus':
-						if all([True for dict_ in subgenus_entries if row['canonicalName'] != dict_['canonicalName']]):
-							subgenus_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='genus':
-						if all([True for dict_ in genus_entries if row['canonicalName'] != dict_['canonicalName']]):
-							genus_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='tribe':
-						if all([True for dict_ in tribe_entries if row['canonicalName'] != dict_['canonicalName']]):
-							tribe_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='subfamily':
-						if all([True for dict_ in subfamily_entries if row['canonicalName'] != dict_['canonicalName']]):
-							subfamily_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='family':
-						if all([True for dict_ in family_entries if row['canonicalName'] != dict_['canonicalName']]):
-							family_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='superfamily':
-						if all([True for dict_ in superfamily_entries if row['canonicalName'] != dict_['canonicalName']]):
-							superfamily_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='parvorder':
-						if all([True for dict_ in parvorder_entries if row['canonicalName'] != dict_['canonicalName']]):
-							parvorder_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='infraorder':
-						if all([True for dict_ in infraorder_entries if row['canonicalName'] != dict_['canonicalName']]):
-							infraorder_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='suborder':
-						if all([True for dict_ in suborder_entries if row['canonicalName'] != dict_['canonicalName']]):
-							suborder_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='order':
-						if all([True for dict_ in order_entries if row['canonicalName'] != dict_['canonicalName']]):
-							order_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='superorder':
-						if all([True for dict_ in superorder_entries if row['canonicalName'] != dict_['canonicalName']]):
-							superorder_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='magnorder':
-						if all([True for dict_ in magnorder_entries if row['canonicalName'] != dict_['canonicalName']]):
-							magnorder_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='infraclass':
-						if all([True for dict_ in infraclass_entries if row['canonicalName'] != dict_['canonicalName']]):
-							infraclass_entries.append(row)
-						else:
-							continue
-					elif row['taxonRank']=='subclass':
-						if all([True for dict_ in subclass_entries if row['canonicalName'] != dict_['canonicalName']]):
-							subclass_entries.append(row)
-						else:
-							continue
+	for file_ in os.listdir(outpath):
+		if not file_.startswith('.')  and os.path.isfile(os.path.join(outpath, file_)):
+			with open(os.path.join(outpath, file_)) as f:
+				reader = csv.DictReader(f)
+				for row in reader:
+					if 'taxonRank' not in row:
+						break
 					else:
-						continue
+						if row['taxonRank']=='species' and row['taxonomicStatus'] in ['junior synonym', 'senior synonym', 'synonym']:
+							if any([True for dict_ in synonym_entries if dict_['scientificName']==row['scientificName']]):
+								continue
+							else:
+								synonym_entries.append(row)
+						elif row['taxonRank']=='subgenus':
+							if all([True for dict_ in subgenus_entries if row['canonicalName'] != dict_['canonicalName']]):
+								subgenus_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='genus':
+							if all([True for dict_ in genus_entries if row['canonicalName'] != dict_['canonicalName']]):
+								genus_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='tribe':
+							if all([True for dict_ in tribe_entries if row['canonicalName'] != dict_['canonicalName']]):
+								tribe_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='subfamily':
+							if all([True for dict_ in subfamily_entries if row['canonicalName'] != dict_['canonicalName']]):
+								subfamily_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='family':
+							if all([True for dict_ in family_entries if row['canonicalName'] != dict_['canonicalName']]):
+								family_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='superfamily':
+							if all([True for dict_ in superfamily_entries if row['canonicalName'] != dict_['canonicalName']]):
+								superfamily_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='parvorder':
+							if all([True for dict_ in parvorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+								parvorder_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='infraorder':
+							if all([True for dict_ in infraorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+								infraorder_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='suborder':
+							if all([True for dict_ in suborder_entries if row['canonicalName'] != dict_['canonicalName']]):
+								suborder_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='order':
+							if all([True for dict_ in order_entries if row['canonicalName'] != dict_['canonicalName']]):
+								order_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='superorder':
+							if all([True for dict_ in superorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+								superorder_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='magnorder':
+							if all([True for dict_ in magnorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+								magnorder_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='infraclass':
+							if all([True for dict_ in infraclass_entries if row['canonicalName'] != dict_['canonicalName']]):
+								infraclass_entries.append(row)
+							else:
+								continue
+						elif row['taxonRank']=='subclass':
+							if all([True for dict_ in subclass_entries if row['canonicalName'] != dict_['canonicalName']]):
+								subclass_entries.append(row)
+							else:
+								continue
+						else:
+							continue
 
-def taxonIDs_across_MDD():
+def taxonIDs_across_MDD(inpath, outpath):
 	taxonIDs = set()
 
-	for file_ in MDD_vers:
-		with open(file_) as f:
-			reader = csv.DictReader(f)
-			for row in reader:
-				id_ = [row[key] for key in row if key in ['id', 'taxonID', 'ID_number']]
-				if '' in id_: id_.remove('')
-				if id_:
-					taxonIDs.add(int(id_[0]))
+	for file_ in os.listdir(inpath):
+		if not file_.startswith('.')  and os.path.isfile(os.path.join(inpath, file_)):
+			with open(os.path.join(inpath, file_)) as f:
+				reader = csv.DictReader(f)
+				for row in reader:
+					id_ = [row[key] for key in row if key in ['id', 'taxonID', 'ID_number']]
+					if '' in id_: id_.remove('')
+					if id_:
+						taxonIDs.add(int(id_[0]))
+
+	for file_ in os.listdir(outpath):
+		if not file_.startswith('.')  and os.path.isfile(os.path.join(outpath, file_)):
+			with open(os.path.join(outpath, file_)) as f:
+				reader = csv.DictReader(f)
+				for row in reader:
+					taxonIDs.add(int(row['taxonID']))
 
 	return list(taxonIDs)
 	
@@ -511,8 +520,11 @@ if __name__=='__main__':
 	outfile = args.output
 	if outfile is None: outfile =f'{args.input.rsplit(".", 1)[0]}_inDwC.csv'
 
-	managed_entries_across_MDD()
-	taxonID_entries = taxonIDs_across_MDD()
+	input_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../data')
+	output_dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../MDD_DwC_versions')
 
-	with open(args.input) as f1, open(outfile, 'w') as f2:
+	managed_entries_across_MDD(output_dir_path)
+	taxonID_entries = taxonIDs_across_MDD(input_dir_path, output_dir_path)
+
+	with open(os.path.join(input_dir_path, args.input)) as f1, open(os.path.join(output_dir_path, outfile), 'w') as f2:
 		map_MDD_to_DwC(f1, f2)
