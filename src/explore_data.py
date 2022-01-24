@@ -3,27 +3,6 @@
 import os, csv, argparse, sys, re
 from util import find_index, del_list_indexes, generate_hash, generate_taxonID
 
-# MDD_input_versions= [
-# 		'MDD_v1_6495species_JMamm.csv', 
-# 		'MDD_v1.1_6526species.csv', 
-# 		'MDD_v1.2_6485species.csv', 
-# 		'MDD_v1.3_6513species.csv', 
-# 		'MDD_v1.31_6513species.csv', 
-# 		'MDD_v1.4_6533species.csv', 
-# 		'MDD_v1.5_6554species.csv',
-# 		'MDD_v1.6_6557species.csv', 
-# 		'MDD_v1.7_6567species.csv',
-# 		'MDD_v1_6495species_JMamm_inDwC.csv', 
-# 		'MDD_v1.1_6526species_inDwC.csv', 
-# 		'MDD_v1.2_6485species_inDwC.csv', 
-# 		'MDD_v1.3_6513species_inDwC.csv', 
-# 		'MDD_v1.31_6513species_inDwC.csv', 
-# 		'MDD_v1.4_6533species_inDwC.csv', 
-# 		'MDD_v1.5_6554species_inDwC.csv',
-# 		'MDD_v1.6_6557species_inDwC.csv', 
-# 		'MDD_v1.7_6567species_inDwC.csv',
-# ]
-
 MDD_DwC_mapping = {
 		'Authority_author': 'scientificNameAuthor',   # scientificNameAuthor,namePublishedInYear and authorityParentheses will be combined to create a new column scientificNameAuthorship
 		'Authority_fullcitation': 'namePublishedIn',
