@@ -135,14 +135,15 @@ def map_MDD_to_DwC(infile, outfile):
   reader = csv.reader(infile)
   in_header = next(reader)
   missing = [col for col in in_header if not col in MDD_DwC_mapping]
-  print(f"Unmapped columns: {missing}", file=sys.stderr)
-  print(f"Please update MDD_DwC_mapping", file=sys.stderr)
+  if len(missing) > 0:
+    print(f"Unmapped columns: {missing}", file=sys.stderr)
+    print(f"Please update MDD_DwC_mapping", file=sys.stderr)
   DwC_header = [MDD_DwC_mapping.get(col) or col for col in in_header]
 
   id_index = find_index(DwC_header, 'taxonID')
   author_index = find_index(DwC_header, 'scientificNameAuthor')
   year_index = find_index(DwC_header, 'namePublishedInYear')
-  paranthesis_index = find_index(DwC_header, 'authorityParentheses')
+  parenthesis_index = find_index(DwC_header, 'authorityParentheses')
   cn_index = find_index(DwC_header, 'canonicalName')
   ep_index = find_index(DwC_header, 'specificEpithet')
   if ep_index == None: ep_index = len(DwC_header)
@@ -230,7 +231,11 @@ def map_MDD_to_DwC(infile, outfile):
     canonical_name = ' '.join(row[cn_index].split('_'))
     author = row[author_index]
     year = row[year_index]
-    sn_authorship = f'({author}, {year})' if paranthesis_index is not None and int(row[paranthesis_index]) == 1 else f'{author}, {year}'
+    sn_authorship = f'({author}, {year})' \
+      if parenthesis_index is not None and \
+         row[parenthesis_index] and \
+         int(row[parenthesis_index]) == 1 \
+      else f'{author}, {year}'
     scientific_name = f'{canonical_name} {sn_authorship}'
     out_row[out_sn_index] = scientific_name
     out_row[out_sna_index] = sn_authorship
@@ -339,7 +344,7 @@ def map_MDD_to_DwC(infile, outfile):
     if len(v)>1:
       print(f'{k}  -  {", ".join(v)}')
   writer = csv.writer(outfile)
-  indexes_to_delete = {author_index, year_index, paranthesis_index, nn_index}
+  indexes_to_delete = {author_index, year_index, parenthesis_index, nn_index}
   out_header = del_list_indexes(out_header, indexes_to_delete)
   writer.writerow(out_header)
   for row in out_rows:
@@ -511,8 +516,6 @@ if __name__=='__main__':
 
   input_dir_path = os.path.dirname(infile)
   output_dir_path = os.path.dirname(outfile)
-  print("input dir %s / output dir %s" % (input_dir_path, output_dir_path),
-        file=sys.stderr)
 
   managed_entries_across_MDD(output_dir_path)
   taxonID_entries = taxonIDs_across_MDD(input_dir_path, output_dir_path)
