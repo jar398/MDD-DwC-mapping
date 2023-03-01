@@ -211,7 +211,8 @@ def map_MDD_to_DwC(infile, outfile, inpath):
   def add_rank_details_to_output_list(canonicalName, taxonomicRank, parentNameUsageID, index):
     # Is there already a record with the given rank and name?
     # (would help a lot if there were an index, a dict from (name, rank) to taxon record)
-    maybe_parent_id = higher_taxa.get((taxonomicRank, canonicalName), None)
+    maybe_parent = higher_taxa.get((taxonomicRank, canonicalName), None)
+    maybe_parent_id = maybe_parent[id_index]
     is_taxon_added_to_output_list = [taxon_record for taxon_record in out_rows if taxon_record[out_trank_index]==taxonomicRank and taxon_record[cn_index]==canonicalName]
     if is_taxon_added_to_output_list:
       parent_id = is_taxon_added_to_output_list[0][id_index]
@@ -373,11 +374,13 @@ def map_MDD_to_DwC(infile, outfile, inpath):
     writer.writerow(trimmed_row)
 
 def is_taxon_available(name, taxonomic_rank):
+  maybe = higher_taxa.get((name, taxonomic_rank))
   gobal_entries_to_search = taxonomic_rank_based_global_entries[taxonomic_rank]
   if len(gobal_entries_to_search) == 0: return False
 
   for entry in gobal_entries_to_search:
     if name == entry['canonicalName']:
+      assert entry == maybe
       return entry
 
   return False
