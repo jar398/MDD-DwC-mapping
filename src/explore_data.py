@@ -206,15 +206,18 @@ def map_MDD_to_DwC(infile, outfile, inpath):
       (subgenus_index, 'subgenus'),
     ]
 
+  global higher_taxa
   higher_taxa = {}
 
   def add_rank_details_to_output_list(canonicalName, taxonomicRank, parentNameUsageID, index):
     # Is there already a record with the given rank and name?
     # (would help a lot if there were an index, a dict from (name, rank) to taxon record)
-    maybe_parent = higher_taxa.get((taxonomicRank, canonicalName), None)
-    maybe_parent_id = maybe_parent[id_index]
+    maybe_parent = higher_taxa.get((taxonomicRank, canonicalName), None) # record
+    maybe_parent_id = maybe_parent[id_index] if maybe_parent else None
     is_taxon_added_to_output_list = [taxon_record for taxon_record in out_rows if taxon_record[out_trank_index]==taxonomicRank and taxon_record[cn_index]==canonicalName]
-    if is_taxon_added_to_output_list:
+    if True:
+      parent_id = maybe_parent_id
+    elif False and is_taxon_added_to_output_list:
       parent_id = is_taxon_added_to_output_list[0][id_index]
       assert parent_id == maybe_parent_id
     else:
@@ -225,7 +228,7 @@ def map_MDD_to_DwC(infile, outfile, inpath):
               taxon_record[taxonomicRank], taxon_record['parentNameUsageID']]
       for indx, value in zip(indexes_to_be_filled, values):
         output_taxon_row[indx] = value
-      higher_taxa[(taxonomicRank, canonicalName)] = output_taxon_row[id_index]
+      higher_taxa[(taxonomicRank, canonicalName)] = output_taxon_row
       out_rows.append(output_taxon_row)
       parent_id = taxon_record['taxonID']
     return parent_id
@@ -314,7 +317,7 @@ def map_MDD_to_DwC(infile, outfile, inpath):
           nomenclatural_status = nomenclatural_status[:-1]
         elif re.search('\[', syn_authorship): 
           # I don't understand why [ is disallowed - should be only unbalanced ones
-          print(f'** nominal name - {syn} - formatting error',
+          print(f'** nominal name - formatting error - {syn}',
                 file=sys.stderr)
         else:
           nomenclatural_status = ''
@@ -375,6 +378,7 @@ def map_MDD_to_DwC(infile, outfile, inpath):
 
 def is_taxon_available(name, taxonomic_rank):
   maybe = higher_taxa.get((name, taxonomic_rank))
+  if True: return maybe
   gobal_entries_to_search = taxonomic_rank_based_global_entries[taxonomic_rank]
   if len(gobal_entries_to_search) == 0: return False
 
@@ -508,6 +512,8 @@ def taxonIDs_across_MDD(input_dir_path, output_dir_path):
   taxonIDs = set()
   max_id = -1
 
+  if True: return [500000000, taxonIDs]
+
   # Find all ids already used in other files, to avoid collisions
   for file_ in os.listdir(input_dir_path):
     inpath = os.path.join(input_dir_path, file_)
@@ -557,7 +563,7 @@ if __name__=='__main__':
   input_dir_path = os.path.dirname(inpath)
   output_dir_path = os.path.dirname(outfile)
 
-  managed_entries_across_MDD(output_dir_path)
+  #managed_entries_across_MDD(output_dir_path)
   # TBD: Exclude the current file (so we can replace in place)
   all_taxonIDs = taxonIDs_across_MDD(input_dir_path, output_dir_path)
 
