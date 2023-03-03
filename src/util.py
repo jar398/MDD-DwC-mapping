@@ -25,7 +25,7 @@ def generate_taxonID(all_taxonIDs):
   global taxonID_count
   (max_id, id_set) = all_taxonIDs
   new_id = max_id + 1
-  # id_set.add(new_id) - not needed any more
+  # id_set.add(new_id) - not needed 
   all_taxonIDs[0] = new_id      # Update max
   return (new_id, all_taxonIDs)
 
