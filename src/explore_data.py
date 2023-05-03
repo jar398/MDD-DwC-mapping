@@ -332,11 +332,7 @@ def map_MDD_to_DwC(infile, outfile, inpath):
           unique_syn_list.append(f'{syn_epithet} {syn_authorship}')
         
         # We don't know the genus, really... dommage
-        # Formerly: row[genus_index]
-        if syn_authorship.startswith('('):
-          canonical_name = f'? {syn_epithet}'
-        else:
-          canonical_name = f'{row[genus_index]} {syn_epithet}'
+        canonical_name = f'{row[genus_index]} {syn_epithet}'
         scientific_name = f'{canonical_name} {syn_authorship}'
 
         if scientific_name in syn_species_dict:

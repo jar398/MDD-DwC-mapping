@@ -17,7 +17,8 @@ all: $(DWC)/mdd1.0-dwc.csv \
      $(DWC)/mdd1.7-dwc.csv \
      $(DWC)/mdd1.8-dwc.csv \
      $(DWC)/mdd1.9-dwc.csv \
-     $(DWC)/mdd1.10-dwc.csv
+     $(DWC)/mdd1.10-dwc.csv \
+     $(DWC)/mdd1.11-dwc.csv
 
 E=$(HOME)/src/explore_data.py
 CONVERTMDD=mkdir -p $(DWC) && time python3 $E
@@ -57,5 +58,8 @@ $(DWC)/mdd1.9-dwc.csv: $(MDDSOURCE)/MDD_v1.9_6596species.csv $E
 # 1.9.1 is not on zenodo (I think).  Probably no reason to worry.
 $(DWC)/mdd1.9.1-dwc.csv:
 $(DWC)/mdd1.10-dwc.csv: $(MDDSOURCE)/MDD_v1.10_6615species.csv $E
+	$(CONVERTMDD) --input $< --output $@.new
+	mv -f $@.new $@
+$(DWC)/mdd1.11-dwc.csv: $(MDDSOURCE)/MDD_v1.11_6649species.csv $E
 	$(CONVERTMDD) --input $< --output $@.new
 	mv -f $@.new $@
