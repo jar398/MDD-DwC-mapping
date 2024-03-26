@@ -4,6 +4,7 @@ import os, csv, argparse, sys, re
 from util import find_index, del_list_indexes, generate_hash, generate_taxonID
 
 MDD_DwC_mapping = {
+    '': 'MISSING_HEADER',
     'Authority_author': 'scientificNameAuthor',   # scientificNameAuthor,namePublishedInYear and authorityParentheses will be combined to create a new column scientificNameAuthorship
     'Authority_fullcitation': 'namePublishedIn',
     'Authority_link': 'authoritySpeciesLink',
