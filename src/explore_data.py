@@ -20,9 +20,12 @@ MDD_DwC_mapping = {
     'authoritySpeciesYear': 'namePublishedInYear',
     'biogeographicRealm':'bioGeographicRealm',
     'CMW_sciName': 'scientificNameCMW',
+    'continentDistribution': 'continentDistribution',
     'countryDistribution': 'countryDistribution',
     'diffSinceCMW': 'diffSinceCMW',
     'diffSinceMSW3': 'diffSinceMSW3',
+    'distributionNotes': 'distributionNotes',
+    'distributionNotesCitation': 'distributionNotesCitation',
     'domestic': 'domestic',
     'domestic?': 'domestic', 
     'extinct': 'extinct', 
@@ -85,6 +88,7 @@ MDD_DwC_mapping = {
     'Subfamily': 'subfamily', 
     'subgenus': 'subgenus',
     'suborder': 'suborder',
+    'subregionDistribution': 'subregionDistribution',
     'superfamily': 'superfamily',
     'superorder': 'superorder',
     'synonymOf?': 'synonymOf',
@@ -97,6 +101,9 @@ MDD_DwC_mapping = {
     'typeLocality': 'typeLocality',
     'typeLocalityLatitude': 'typeLocalityLatitude',
     'typeLocalityLongitude': 'typeLocalityLongitude',
+    'typeKind': 'typeKind',
+    'typeVoucher': 'typeVoucher',
+    'typeVoucherURIs': 'typeVoucherURIs',
     '\ufeffMajorType': 'majorType',
 }
 
@@ -303,34 +310,40 @@ def map_MDD_to_DwC(infile, outfile, inpath):
 
     # nominalNames
     if nn_index is not None and row[nn_index] is not None:
-      syn_list = row[nn_index].split('|')
+      ro = row[nn_index]
+      ro = ro.replace(' | ', ' $ ')
+      syn_list = ro.split('|')
       unique_syn_list = [] # to check multiple entries of the same synonym for a species
       #print("# n %s syn_list %s" % (len(out_rows), syn_list), file=sys.stderr)
 
       for syn in syn_list:
         if syn.strip() == '': continue
+
+        # Look for taxonomic status
+        bracket_parts = syn.split('[', 1)
+        if len(bracket_parts) > 1:
+          syn, nomenclatural_statuses = bracket_parts
+          if nomenclatural_statuses[-1] == ']':
+            nomenclatural_statuses = nomenclatural_statuses[:-1]
+          else:
+            print('missing ]', file=sys.stderr)
+          nomenclatural_statuses = nomenclatural_statuses.split(' $ ')
+        else:
+          name = bracket_parts
+          nomenclatural_statuses = ()
+
+        # Find authorship.  Should use gnparse.
+        syn = syn.strip()
+        if syn[0].isupper():
+          print('expected epithet only: %s' % syn, file=sys.stderr)
         syn_epithet, syn_authorship = syn.split(' ', 1)
         if syn_epithet == row[ep_index]: continue
 
-        if re.search('\[(.*?)[\]\)]$', syn_authorship):
-          syn_authorship, nomenclatural_status = syn_authorship.split('[')
-          if syn_authorship is None: 
-            syn_authorship = ''
-          else:
-            syn_authorship = syn_authorship[:-1]
-          nomenclatural_status = nomenclatural_status[:-1]
-        elif re.search('\[', syn_authorship): 
-          # I don't understand why [ is disallowed - should be only unbalanced ones
-          print(f'** nominal name - formatting error - {syn}',
-                file=sys.stderr)
-        else:
-          nomenclatural_status = ''
-
-        if f'{syn_epithet} {syn_authorship}' in unique_syn_list:
-          print(f'row with duplicate synonyms: {out_row[out_sn_index]}', file=sys.stderr)
+        if syn in unique_syn_list:
+          print(f'row duplicates a synonym: {out_row[out_sn_index]}', file=sys.stderr)
           continue
         else:
-          unique_syn_list.append(f'{syn_epithet} {syn_authorship}')
+          unique_syn_list.append(syn)
         
         # We don't know the genus, really... dommage
         canonical_name = f'{row[genus_index]} {syn_epithet}'
@@ -362,6 +375,7 @@ def map_MDD_to_DwC(infile, outfile, inpath):
           syn_taxon_id, all_taxonIDs = generate_taxonID(all_taxonIDs)
         else:
           syn_taxon_id = exist_synonym['taxonID']
+        nomenclatural_status = ';'.join(nomenclatural_statuses)
         syn_values = [syn_taxon_id, '', row_id, scientific_name, syn_authorship, canonical_name, row[genus_index], syn_epithet, \
                 'species', ts_status, nomenclatural_status, row[genus_index]]
         for index, value in zip(syn_indexes, syn_values):
@@ -371,7 +385,7 @@ def map_MDD_to_DwC(infile, outfile, inpath):
 
   for k, v in syn_species_dict.items():
     if len(v)>1:
-      print(f'{k}  -  {", ".join(v)}', file=sys.stderr)
+      print(f'{k} is in {", ".join(v)}', file=sys.stderr)
   writer = csv.writer(outfile)
   indexes_to_delete = {author_index, year_index, parenthesis_index, nn_index}
   out_header = del_list_indexes(out_header, indexes_to_delete)
@@ -408,77 +422,77 @@ def managed_entries_across_MDD(output_dir_path):
           else:
             if row['taxonRank']=='species':
               if row['taxonomicStatus'] in ['junior synonym', 'senior synonym', 'synonym']:
-                if any([True for dict_ in synonym_entries if dict_['scientificName']==row['scientificName']]):
+                if any([True for entry in synonym_entries if entry['scientificName']==row['scientificName']]):
                   continue
               else:
                 synonym_entries.append(row)
             elif row['taxonRank']=='subgenus':
-              if all([True for dict_ in subgenus_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in subgenus_entries if row['canonicalName'] != entry['canonicalName']]):
                 subgenus_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='genus':
-              if all([True for dict_ in genus_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in genus_entries if row['canonicalName'] != entry['canonicalName']]):
                 genus_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='tribe':
-              if all([True for dict_ in tribe_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in tribe_entries if row['canonicalName'] != entry['canonicalName']]):
                 tribe_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='subfamily':
-              if all([True for dict_ in subfamily_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in subfamily_entries if row['canonicalName'] != entry['canonicalName']]):
                 subfamily_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='family':
-              if all([True for dict_ in family_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in family_entries if row['canonicalName'] != entry['canonicalName']]):
                 family_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='superfamily':
-              if all([True for dict_ in superfamily_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in superfamily_entries if row['canonicalName'] != entry['canonicalName']]):
                 superfamily_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='parvorder':
-              if all([True for dict_ in parvorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in parvorder_entries if row['canonicalName'] != entry['canonicalName']]):
                 parvorder_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='infraorder':
-              if all([True for dict_ in infraorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in infraorder_entries if row['canonicalName'] != entry['canonicalName']]):
                 infraorder_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='suborder':
-              if all([True for dict_ in suborder_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in suborder_entries if row['canonicalName'] != entry['canonicalName']]):
                 suborder_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='order':
-              if all([True for dict_ in order_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in order_entries if row['canonicalName'] != entry['canonicalName']]):
                 order_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='superorder':
-              if all([True for dict_ in superorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in superorder_entries if row['canonicalName'] != entry['canonicalName']]):
                 superorder_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='magnorder':
-              if all([True for dict_ in magnorder_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in magnorder_entries if row['canonicalName'] != entry['canonicalName']]):
                 magnorder_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='infraclass':
-              if all([True for dict_ in infraclass_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in infraclass_entries if row['canonicalName'] != entry['canonicalName']]):
                 infraclass_entries.append(row)
               else:
                 continue
             elif row['taxonRank']=='subclass':
-              if all([True for dict_ in subclass_entries if row['canonicalName'] != dict_['canonicalName']]):
+              if all([True for entry in subclass_entries if row['canonicalName'] != entry['canonicalName']]):
                 subclass_entries.append(row)
               else:
                 continue
