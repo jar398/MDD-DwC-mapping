@@ -16,3 +16,7 @@ E.g.
 To convert all versions in the `data` directory:
 
     make
+
+
+Author: Prashant Gupta, 
+subsequence modifications by: Jonathan A. Rees
