@@ -1,6 +1,16 @@
 # MDD-DwC-mapping
 
-The script employs mapping from MDD (Mammal Diversity Database) data model to the Darwin Core (https://dwc.tdwg.org/) standard, and updates and harmonizes various versions of MDD dataset to DwC format. Hierarchical information and synonyms were stored in custom format in MDD versions, which are now extracted and stored in DwC style using 'parentNameUsageID' and 'acceptedNameUsageID'. The synonyms are further classified into 'junior synonym' and 'senior synonym', and are highlighted in 'taxononomic status' column. The original datasets contain individual rows only for species and genus level taxonomic rank.
+The script employs mapping from the MDD (Mammal Diversity Database)
+data model to the Darwin Core (https://dwc.tdwg.org/) standard, and
+updates and harmonizes various versions of MDD dataset to DwC
+format. Hierarchical information and synonyms are stored in custom
+format in MDD versions, which are now extracted and stored in DwC
+style using 'parentNameUsageID' and 'acceptedNameUsageID'. The
+synonyms are further classified into 'junior synonym' and 'senior
+synonym', and are highlighted in 'taxononomic status' column. The
+original datasets contain individual rows only for species and genus
+level taxonomic rank, so we add rows for higher taxa using the
+ancestry columns in MDD.
 
 To convert a single version of MDD:
 
