@@ -15,7 +15,7 @@ rights he might have as a coauthor of "MDD-DwC-mapping 2".
 
 "MDD-DwC-mapping 2" was available from
 https://github.com/jar398/MDD-DwC-mapping 
-as of 3 May 2023.
+as of 31 January 2026.
 
 "MDD-DwC-mapping 1" was retrieved from
 https://github.com/pgasu/MDD-DwC-mapping 
